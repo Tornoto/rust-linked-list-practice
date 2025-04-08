@@ -79,7 +79,8 @@ impl Drop for List {
     fn drop(&mut self) {
         let mut cur = std::mem::replace(&mut self.head, Link::Empty);
         while let Link::More(mut node) = cur {
-            cur = std::mem::replace(&mut node.next, Link::Empty)
+            // cur = std::mem::replace(&mut node.next, Link::Empty)
+            cur = node.next;
         }
     }
 }
