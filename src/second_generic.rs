@@ -43,6 +43,9 @@ impl<T> List<T> {
     }
 }
 
+// rust 标准库中的一些数据类型，也是为数据类型提供迭代器，再为迭代器实现 Iterator triat
+// 由于 IntoIter 迭代器会消耗数据对象，因此可以转移所有权给迭代器。
+// 这样一来，无需考虑生命周期，实现起来也比较容易
 pub struct IntoIter<T>(List<T>);
 
 impl<T> List<T> {
@@ -55,15 +58,21 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // 元组结构体的访问方式
         self.0.pop()
     }
 }
 
+// 由于 Iter 迭代器存放的是数据对象成员的引用，需要考虑引用的生命周期
+// 'a 表示引用的生命周期，T 表示泛型，T: 'a 表示数据对象成员的生命周期至少长于 'a
+// 写成 `pub struct Iter<'a, T>` 亦可
 pub struct Iter<'a, T: 'a> {
     current: Option<&'a Node<T>>,
 }
 
 impl<T> List<T> {
+    // 可以基于生命周期自动推导，写成
+    // pub fn iter(&self) -> Iter<'_, T> {
     pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         Iter {
             current: self.head.as_ref().map(|node| &**node),
@@ -108,6 +117,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         //     None => None,
         // }
 
+        // 注意这里使用的take()
         self.current.take().map(|node| {
             self.current = node.next.as_deref_mut();
             &mut node.elem
