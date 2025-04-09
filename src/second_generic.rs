@@ -60,14 +60,14 @@ impl<T> Iterator for IntoIter<T> {
 }
 
 pub struct Iter<'a, T: 'a> {
-    next: Option<&'a Node<T>>,
+    current: Option<&'a Node<T>>,
 }
 
 impl<T> List<T> {
     pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         Iter {
-            next: self.head.as_ref().map(|node| &**node),
-            // next: self.head.as_deref(),
+            current: self.head.as_ref().map(|node| &**node),
+            // current: self.head.as_deref(),
         }
     }
 }
@@ -76,10 +76,41 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next.map(|node| {
-            self.next = node.next.as_ref().map(|node| &**node);
-            // self.next = node.next.as_deref();
+        self.current.map(|node| {
+            self.current = node.next.as_ref().map(|node| &**node);
+            // self.current = node.next.as_deref();
             &node.elem
+        })
+    }
+}
+
+pub struct IterMut<'a, T> {
+    current: Option<&'a mut Node<T>>,
+}
+
+impl<T> List<T> {
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+        IterMut {
+            current: self.head.as_deref_mut(),
+        }
+    }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // match self.current.take() {
+        //     Some(node) => {
+        //         self.current = node.next.as_deref_mut();
+        //         Some(&mut node.elem)
+        //     }
+        //     None => None,
+        // }
+
+        self.current.take().map(|node| {
+            self.current = node.next.as_deref_mut();
+            &mut node.elem
         })
     }
 }
@@ -130,6 +161,23 @@ fn test_iter() {
     list.push("A".to_string());
     // list.push("B".to_string());
     // list.push("C".to_string());
+
+    for node in list.iter() {
+        println!("{:?}", node);
+    }
+}
+
+#[test]
+fn test_iter_mut() {
+    let mut list: List<String> = List::new();
+
+    list.push("A".to_string());
+    list.push("B".to_string());
+    list.push("C".to_string());
+
+    for node in list.iter_mut() {
+        node.push('*');
+    }
 
     for node in list.iter() {
         println!("{:?}", node);
