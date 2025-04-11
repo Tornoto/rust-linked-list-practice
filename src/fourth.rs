@@ -1,5 +1,6 @@
+#![allow(unused)]
 // 双端队列
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 
 type Link<T> = Option<Rc<RefCell<Node<T>>>>;
@@ -91,6 +92,51 @@ impl<T> List<T> {
             Rc::try_unwrap(old_tail).ok().unwrap().into_inner().elem
         })
     }
+
+    pub fn peek_front(&self) -> Option<Ref<T>> {
+        self.head
+            .as_deref()
+            .map(|node| Ref::map(node.borrow(), |borrowed_node| &borrowed_node.elem))
+    }
+
+    pub fn peek_front_mut(&mut self) -> Option<RefMut<T>> {
+        self.head
+            .as_deref()
+            .map(|node| RefMut::map(node.borrow_mut(), |borrowed_node| &mut borrowed_node.elem))
+    }
+
+    pub fn peek_back(&self) -> Option<Ref<T>> {
+        self.tail
+            .as_deref()
+            .map(|node| Ref::map(node.borrow(), |borrowed_node| &borrowed_node.elem))
+    }
+
+    pub fn peek_back_mut(&mut self) -> Option<RefMut<T>> {
+        self.tail
+            .as_deref()
+            .map(|node| RefMut::map(node.borrow_mut(), |borrowed_node| &mut borrowed_node.elem))
+    }
+}
+
+pub struct IntoIter<T>(List<T>);
+
+impl<T> List<T> {
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
+    }
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        self.0.pop_front()
+    }
+}
+
+impl<T> DoubleEndedIterator for IntoIter<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.pop_back()
+    }
 }
 
 impl<T> Drop for List<T> {
@@ -162,7 +208,28 @@ mod test {
     fn test_pop_last_node() {
         let mut list = List::new();
         list.push_back(1);
-        assert_eq!(list.pop_back(), Some(1)); // 原先会触发 panic
+        assert_eq!(&*list.peek_back().unwrap(), &1);
+        assert_eq!(&*list.peek_front().unwrap(), &1);
+        assert_eq!(&mut *list.peek_front_mut().unwrap(), &mut 1);
+        assert_eq!(&mut *list.peek_back_mut().unwrap(), &mut 1);
+        assert_eq!(list.pop_back(), Some(1));
+        assert_eq!(list.pop_front(), None);
         assert_eq!(list.pop_back(), None);
+    }
+
+    #[test]
+    fn test_into_iter() {
+        let mut list = List::new();
+
+        // Populate list
+        list.push_front(1);
+        list.push_front(2);
+        list.push_front(3);
+
+        let mut iter = list.into_iter();
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next_back(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), None);
     }
 }
